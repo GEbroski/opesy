@@ -148,9 +148,13 @@ public class Main{
             try{
                 Thread.sleep(1000);
 
-                /*Initially, there was an instruction here that decrements the mutex count by one to know how many threads are in the 
-                 * mutex lock. But we realized there is a race condition that can occur here because its before the mutex lock itself.
-                 */
+                /*Initially, there was an instruction here that decrements the mutex count (it tracks how many threads sleeping in mutex) 
+                 * by one to know how many threads are in the 
+                 * mutex lock. But upon thorough investigation with the library, there was a method that checks the count of sleeping
+                 * threads at the semaphore lock (semaphore.hasQueuedThreads()). So we scrapped this idea.
+                 * 
+                 * NOTE: Our group does not indeed know if the idea of checking how many threads in a semaphore lock is a good idea in terms of coding standards.
+                 * But upon checking the requirements of the specs and through group reasoning, we decided to use */
                 mutex.acquire();
                 System.out.println(getThreadName() + "mutex: " + mutex.getQueueLength());
                 System.out.println(getThreadName() + "Super: " + superWaitQueue.getQueueLength());
@@ -162,12 +166,16 @@ public class Main{
                             //if the value of the superQueue is 0 (its initial value), then the current thread will just pass through the release and acquire here.
                             //we do a release (signal) here to apply the fcfs principle but more specifically in a citizen type.
                             //This is saying that if there is a sleeping thread in the super queue, I should wake that up and I should wait at the queue.
-                            System.out.println(getThreadName() + "releases the top and sleeps in the super queue. (Can join context)");
+                            //System.out.println(getThreadName() + "releases the top and sleeps in the super queue. (Can join context)");
                             superWaitQueue.release();
                             //we need to put the semaphore value back to 0 so that the super threads that really needs to wait can be suspended.
                             superWaitQueue.acquire();
                             
-                            System.out.println(getThreadName() + " wakes up from super queue. (Can join context.)");
+                           // System.out.println(getThreadName() + " wakes up from super queue. (Can join context.)");
+                           /*Every time we wake up a thread, we have to keep asking "Can this still join a team?" It could wake up in a condition where they cannot
+                            * join a team anymore. So we have to add this canStillFormTeams method if the thread can still continue
+                            trying to join a team.
+                            */
                             if (canStillFormTeams(totalCitizens, superCitizenCount, regularCitizenCount)) {
                                 currTeam.addMember(this);
                             }
@@ -254,12 +262,14 @@ public class Main{
                     System.out.println(getThreadName() +"Cant join a team anymore (Remaining citizens: " + totalCitizens +" | remaining supers: " + superCitizenCount + " | remaining reg: " + regularCitizenCount + ")");
                 }
 
-                mutexCount++; /* This is like if were about to exit, increment mutex count to check if the semaphore mutex lock IS ALREADY empty
+               // mutexCount++; 
+               /* This is like if were about to exit, check if the semaphore mutex lock IS ALREADY empty
                 when were about release it, somewhat the waitQueues converts into mutex locks when this happens to keep mutual exclusion. Where the mutex.release 
-                becomes irrelevant now in the remaining threads. In other words, we change the exit section of the queue.
+                becomes irrelevant now in the remaining threads. In other words, we change the exit section of the critical section to the regular or super locks.
                 */
                 System.out.println(getThreadName() + " Mutex value: " + mutexCount);
                 if(!mutex.hasQueuedThreads()){
+                    /*If mutex lock */
                     System.out.println(getThreadName() +"mutex queue is empty, mutex count is:" + mutexCount);
                     System.out.println(getThreadName() + "team " + currTeam.teamId + "requires" + currTeam.requires());
                     if(currTeam.requires().equals("Super")){
