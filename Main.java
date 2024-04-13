@@ -111,8 +111,8 @@ public class Main{
     }
     
     static Semaphore mutex = new Semaphore(1);
-    static Semaphore superWaitQueue = new Semaphore(0);
-    static Semaphore regularWaitQueue = new Semaphore(0);
+    static Semaphore superWaitQueue = new Semaphore(0); //semaphore variable used for synchronization
+    static Semaphore regularWaitQueue = new Semaphore(0); //semaphore variable used for synchronization
     static int teamCount = 0;
     static int launchedTeams = 0;
     static int regularCitizenCount = 0;
@@ -298,6 +298,7 @@ public class Main{
                         }
                     }
                 }
+                //If the thread can't form teams anymore, it releases threads from one of the queues
                 else if(!canStillFormTeams(totalCitizens, superCitizenCount, regularCitizenCount)){  
                     if(mutex.hasQueuedThreads()){
                         mutex.release();
